@@ -18,8 +18,7 @@
 						doctype="LMS Category"
 						v-model="course.category"
 						:label="__('Category')"
-						:allowCreate="true"
-						@create="
+						:onCreate="
 							() => {
 								openSettings('Categories')
 								show = false
@@ -75,10 +74,11 @@
 </template>
 <script setup lang="ts">
 import { Button, Dialog, FormControl, TextEditor, toast } from 'frappe-ui'
-import { Link, useOnboarding, useTelemetry } from 'frappe-ui/frappe'
-import { inject, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
+import { inject, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { cleanError, openSettings } from '@/utils'
+import Link from '@/components/Controls/Link.vue'
 import MultiSelect from '@/components/Controls/MultiSelect.vue'
 import Uploader from '@/components/Controls/Uploader.vue'
 
@@ -148,13 +148,13 @@ const keyboardShortcut = (e: KeyboardEvent) => {
 
 onMounted(() => {
 	window.addEventListener('keydown', keyboardShortcut)
+	capture('course_form_opened')
 })
 
 onBeforeUnmount(() => {
 	window.removeEventListener('keydown', keyboardShortcut)
-})
-
-watch(show, () => {
-	if (show.value) capture('course_form_opened')
+	capture('course_form_closed', {
+		data: course.value,
+	})
 })
 </script>

@@ -32,7 +32,7 @@
 							v-model="batch.category"
 							:label="__('Category')"
 							:allowCreate="true"
-							@create="
+							:onCreate="
 								() => {
 									openSettings('Categories')
 									show = false
@@ -110,10 +110,11 @@
 </template>
 <script setup lang="ts">
 import { Button, Dialog, FormControl, TextEditor, toast } from 'frappe-ui'
-import { Link, useOnboarding, useTelemetry } from 'frappe-ui/frappe'
-import { ref, inject, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useOnboarding, useTelemetry } from 'frappe-ui/frappe'
+import { ref, inject, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { cleanError, openSettings } from '@/utils'
+import Link from '@/components/Controls/Link.vue'
 import MultiSelect from '@/components/Controls/MultiSelect.vue'
 
 const show = defineModel<boolean>({ required: true, default: false })
@@ -187,13 +188,13 @@ const keyboardShortcut = (e: KeyboardEvent) => {
 
 onMounted(() => {
 	window.addEventListener('keydown', keyboardShortcut)
+	capture('batch_form_opened')
 })
 
 onBeforeUnmount(() => {
 	window.removeEventListener('keydown', keyboardShortcut)
-})
-
-watch(show, () => {
-	if (show.value) capture('batch_form_opened')
+	capture('batch_form_closed', {
+		data: batch.value,
+	})
 })
 </script>
