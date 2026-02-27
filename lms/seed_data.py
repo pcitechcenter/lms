@@ -178,40 +178,40 @@ def delete_users():
 
 LMS_COURSES = [
     {
-        "title": "Panimula sa Python Programming",
-        "short_introduction": "Matuto ng Python mula sa simula gamit ang mga praktikal na halimbawa.",
-        "description": "<p>Isang kurso para sa mga baguhan na sumasaklaw sa Python syntax, istruktura ng datos, mga function, at OOP. Lahat ng halimbawa ay may kaugnayan sa pang-araw-araw na buhay sa Pilipinas.</p>",
+        "title": "Introduction to Python Programming",
+        "short_introduction": "Learn Python from scratch with hands-on exercises.",
+        "description": "<p>A beginner-friendly course covering Python syntax, data structures, functions, and OOP fundamentals. Ideal for Filipino students entering software development.</p>",
         "category_name": "Programming",
         "instructor_email": "maria.santos@educat.local",
         "chapters": [
             {
-                "title": "Pagsisimula sa Python",
+                "title": "Getting Started with Python",
                 "lessons": [
                     {
-                        "title": "Pag-install ng Python at Pag-setup",
-                        "body": "## I-setup ang Python\n\nI-download ang Python 3.x mula sa python.org.\n\n```bash\npython --version\n```",
+                        "title": "Installing Python and Setting Up Your Environment",
+                        "body": "## Setup\n\nDownload Python 3.x from [python.org](https://python.org) and follow the installer steps.\n\n```bash\npython --version\n```\n\nMake sure the version is 3.8 or higher before proceeding.",
                         "include_in_preview": 1,
                     },
                     {
-                        "title": "Mga Variable at Uri ng Datos",
-                        "body": "## Mga Variable\n\n```python\npangalan = 'Juan dela Cruz'\nedad = 20\ngrado = 89.5\nmula_maynila = True\n```",
+                        "title": "Variables and Data Types",
+                        "body": "## Variables\n\nPython is dynamically typed — no need to declare a type.\n\n```python\nname = 'Juan dela Cruz'\nage = 20\ngpa = 1.75\nis_enrolled = True\n```\n\nCommon types: `str`, `int`, `float`, `bool`, `list`, `dict`.",
                     },
                     {
-                        "title": "Control Flow: if/else at mga Loop",
-                        "body": "## Kondisyon at Loop\n\n```python\nmga_rehiyon = ['NCR', 'Cebu', 'Davao', 'Iloilo']\nfor rehiyon in mga_rehiyon:\n    if rehiyon == 'NCR':\n        print(f'{rehiyon} — Kabisera')\n    else:\n        print(f'{rehiyon} — Probinsya')\n```",
+                        "title": "Control Flow: if/else and Loops",
+                        "body": "## Conditionals and Loops\n\n```python\ngrades = [88, 92, 75, 95, 60]\n\nfor grade in grades:\n    if grade >= 90:\n        print(grade, '— Excellent')\n    elif grade >= 75:\n        print(grade, '— Passed')\n    else:\n        print(grade, '— Failed')\n```",
                     },
                 ],
             },
             {
-                "title": "Mga Function at Module",
+                "title": "Functions and Modules",
                 "lessons": [
                     {
-                        "title": "Pagsulat ng mga Function",
-                        "body": "## Mga Function\n\n```python\ndef kumusta(pangalan: str) -> str:\n    return f'Kumusta, {pangalan}!'\n\nprint(kumusta('Maria Santos'))\n```",
+                        "title": "Defining and Calling Functions",
+                        "body": "## Functions\n\nFunctions help you reuse code and keep things organised.\n\n```python\ndef compute_gwa(grades: list) -> float:\n    return sum(grades) / len(grades)\n\nmy_grades = [88, 92, 85, 90]\nprint('GWA:', compute_gwa(my_grades))\n```",
                     },
                     {
-                        "title": "Paggamit ng mga Module",
-                        "body": "## Mga Built-in Module\n\n```python\nimport math\nimport random\n\nprint(math.pi)\nprint(random.randint(1, 100))\n```",
+                        "title": "Working with Built-in Modules",
+                        "body": "## Modules\n\nPython ships with many useful modules.\n\n```python\nimport math\nimport random\nimport datetime\n\nprint(math.sqrt(144))          # 12.0\nprint(random.randint(1, 100))  # random number\nprint(datetime.date.today())   # today's date\n```",
                     },
                 ],
             },
@@ -219,8 +219,8 @@ LMS_COURSES = [
                 "title": "Object-Oriented Programming",
                 "lessons": [
                     {
-                        "title": "Klase at Bagay (Classes and Objects)",
-                        "body": "## OOP sa Python\n\n```python\nclass Mag_aaral:\n    def __init__(self, pangalan, numero):\n        self.pangalan = pangalan\n        self.numero = numero\n\n    def ipakita(self):\n        print(f'Estudyante: {self.pangalan}, No. {self.numero}')\n\nsi_juan = Mag_aaral('Juan dela Cruz', '2024-00123')\nsi_juan.ipakita()\n```",
+                        "title": "Classes and Objects",
+                        "body": "## OOP in Python\n\n```python\nclass Student:\n    def __init__(self, name: str, student_id: str):\n        self.name = name\n        self.student_id = student_id\n        self.grades = []\n\n    def add_grade(self, grade: float):\n        self.grades.append(grade)\n\n    def get_gwa(self) -> float:\n        return sum(self.grades) / len(self.grades) if self.grades else 0.0\n\njuan = Student('Juan dela Cruz', '2024-00123')\njuan.add_grade(88)\njuan.add_grade(92)\nprint(f'{juan.name} — GWA: {juan.get_gwa()}')\n```",
                     },
                 ],
             },
@@ -230,7 +230,7 @@ LMS_COURSES = [
             "passing_percentage": 60,
             "questions": [
                 {
-                    "question": "Ano ang output ng print(type(42))?",
+                    "question": "What is the output of print(type(42))?",
                     "type": "Choices",
                     "option_1": "<class 'int'>",   "is_correct_1": 1,
                     "option_2": "<class 'str'>",   "is_correct_2": 0,
@@ -238,7 +238,7 @@ LMS_COURSES = [
                     "option_4": "<class 'num'>",   "is_correct_4": 0,
                 },
                 {
-                    "question": "Anong keyword ang ginagamit para tukuyin ang isang function sa Python?",
+                    "question": "Which keyword is used to define a function in Python?",
                     "type": "Choices",
                     "option_1": "def",      "is_correct_1": 1,
                     "option_2": "function", "is_correct_2": 0,
@@ -246,57 +246,57 @@ LMS_COURSES = [
                     "option_4": "fn",       "is_correct_4": 0,
                 },
                 {
-                    "question": "Gumagamit ang Python ng indentation para tukuyin ang mga code block.",
+                    "question": "Python uses indentation to define code blocks.",
                     "type": "Choices",
-                    "option_1": "Tama",          "is_correct_1": 1,
-                    "option_2": "Mali",          "is_correct_2": 0,
-                    "option_3": "Minsan",        "is_correct_3": 0,
-                    "option_4": "Sa loop lamang","is_correct_4": 0,
+                    "option_1": "True",         "is_correct_1": 1,
+                    "option_2": "False",        "is_correct_2": 0,
+                    "option_3": "Sometimes",    "is_correct_3": 0,
+                    "option_4": "Only in loops","is_correct_4": 0,
                 },
             ],
         },
     },
     {
-        "title": "Web Development gamit ang HTML at CSS",
-        "short_introduction": "Gumawa ng modernong website mula sa simula.",
-        "description": "<p>Alamin ang mga pundasyon ng web development — HTML na estruktura, CSS na istilo, Flexbox, at responsive design para sa mga Pilipinong web developer.</p>",
+        "title": "Web Development with HTML and CSS",
+        "short_introduction": "Build modern, responsive websites from the ground up.",
+        "description": "<p>Learn the foundations of web development — HTML structure, CSS styling, Flexbox, and responsive design. Perfect for aspiring Filipino web developers.</p>",
         "category_name": "Web Development",
         "instructor_email": "jose.reyes@educat.local",
         "chapters": [
             {
-                "title": "Mga Pundasyon ng HTML",
+                "title": "HTML Fundamentals",
                 "lessons": [
                     {
-                        "title": "Estruktura ng HTML Document",
-                        "body": "## HTML Boilerplate\n\n```html\n<!DOCTYPE html>\n<html lang='fil'>\n  <head>\n    <meta charset='UTF-8'>\n    <title>Aking Pahina</title>\n  </head>\n  <body>\n    <h1>Mabuhay!</h1>\n  </body>\n</html>\n```",
+                        "title": "HTML Document Structure",
+                        "body": "## HTML Boilerplate\n\nEvery webpage starts with this basic structure:\n\n```html\n<!DOCTYPE html>\n<html lang='en'>\n  <head>\n    <meta charset='UTF-8'>\n    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\n    <title>My First Page</title>\n  </head>\n  <body>\n    <h1>Hello, World!</h1>\n    <p>Welcome to my website.</p>\n  </body>\n</html>\n```",
                         "include_in_preview": 1,
                     },
                     {
-                        "title": "Mga Karaniwang HTML Tag",
-                        "body": "## Mga Tag\n\n- `<h1>`–`<h6>` — mga pamagat\n- `<p>` — talata\n- `<a href=''>` — link\n- `<img src='' alt=''>` — larawan\n- `<ul>` / `<ol>` — listahan",
+                        "title": "Common HTML Tags",
+                        "body": "## Essential Tags\n\n- `<h1>`–`<h6>` — headings\n- `<p>` — paragraph\n- `<a href=''>` — hyperlink\n- `<img src='' alt=''>` — image\n- `<ul>` / `<ol>` — unordered / ordered list\n- `<table>` — table\n- `<form>` — input form\n- `<div>` / `<span>` — layout containers",
                     },
                 ],
             },
             {
-                "title": "CSS at Disenyo",
+                "title": "CSS Styling",
                 "lessons": [
                     {
-                        "title": "Mga Selector at Property",
-                        "body": "## CSS Basics\n\n```css\nbody {\n  font-family: 'Arial', sans-serif;\n  background-color: #f0f4f8;\n}\nh1 {\n  color: #0038a8; /* asul ng Pilipinas */\n}\n```",
+                        "title": "Selectors and Properties",
+                        "body": "## CSS Basics\n\n```css\n/* Global styles */\nbody {\n  font-family: 'Segoe UI', sans-serif;\n  background-color: #f8fafc;\n  color: #1a202c;\n  margin: 0;\n  padding: 0;\n}\n\nh1 {\n  color: #0038a8;\n  font-size: 2rem;\n}\n\np {\n  line-height: 1.7;\n}\n```",
                     },
                     {
-                        "title": "Flexbox na Layout",
-                        "body": "## Flexbox\n\n```css\n.lalagyan {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 1rem;\n}\n```",
+                        "title": "Flexbox Layout",
+                        "body": "## Flexbox\n\nFlexbox makes it easy to align and distribute elements.\n\n```css\n.container {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  gap: 1rem;\n  flex-wrap: wrap;\n}\n\n.card {\n  flex: 1 1 200px;\n  padding: 1rem;\n  border-radius: 8px;\n  background: #fff;\n  box-shadow: 0 2px 8px rgba(0,0,0,0.08);\n}\n```",
                     },
                 ],
             },
         ],
         "quiz": {
-            "title": "HTML at CSS Quiz",
+            "title": "HTML and CSS Quiz",
             "passing_percentage": 60,
             "questions": [
                 {
-                    "question": "Ano ang ibig sabihin ng HTML?",
+                    "question": "What does HTML stand for?",
                     "type": "Choices",
                     "option_1": "HyperText Markup Language",     "is_correct_1": 1,
                     "option_2": "High Text Machine Language",    "is_correct_2": 0,
@@ -304,7 +304,7 @@ LMS_COURSES = [
                     "option_4": "HyperTransfer Markup Language", "is_correct_4": 0,
                 },
                 {
-                    "question": "Anong CSS property ang nagkokontrol sa kulay ng teksto?",
+                    "question": "Which CSS property controls the text color?",
                     "type": "Choices",
                     "option_1": "color",            "is_correct_1": 1,
                     "option_2": "text-color",       "is_correct_2": 0,
@@ -315,32 +315,32 @@ LMS_COURSES = [
         },
     },
     {
-        "title": "Pagsusuri ng Datos gamit ang Pandas",
-        "short_introduction": "Manipulahin at suriin ang datos gamit ang Pandas library ng Python.",
-        "description": "<p>Sinasaklaw ang DataFrame, paglilinis ng datos, paggrugrupo, at basic na visualisasyon gamit ang datos mula sa kontekstong Pilipino.</p>",
+        "title": "Data Analysis with Pandas",
+        "short_introduction": "Manipulate and analyse data using Python's Pandas library.",
+        "description": "<p>Covers DataFrames, data cleaning, grouping, merging, and basic visualisation with Matplotlib. Examples use real-world datasets relevant to the Philippine context.</p>",
         "category_name": "Data Science",
         "instructor_email": "maria.santos@educat.local",
         "chapters": [
             {
-                "title": "Mga Pundasyon ng Pandas",
+                "title": "Pandas Basics",
                 "lessons": [
                     {
-                        "title": "Paggawa ng DataFrame",
-                        "body": "## DataFrame\n\n```python\nimport pandas as pd\n\ndf = pd.DataFrame({\n    'pangalan': ['Juan dela Cruz', 'Ana Bautista', 'Miguel Ocampo'],\n    'rehiyon':  ['NCR', 'Cebu', 'Davao'],\n    'grado':    [88, 92, 85]\n})\nprint(df)\n```",
+                        "title": "Creating DataFrames",
+                        "body": "## DataFrames\n\nA DataFrame is a table of data with labelled rows and columns.\n\n```python\nimport pandas as pd\n\ndf = pd.DataFrame({\n    'name':   ['Juan dela Cruz', 'Ana Bautista', 'Miguel Ocampo'],\n    'region': ['NCR', 'Cebu', 'Davao'],\n    'grade':  [88, 92, 85]\n})\n\nprint(df)\nprint(df.dtypes)\n```",
                         "include_in_preview": 1,
                     },
                     {
-                        "title": "Pagbabasa ng CSV Files",
-                        "body": "## Basahin ang CSV\n\n```python\ndf = pd.read_csv('mga_estudyante.csv')\ndf.head()\ndf.info()\ndf.describe()\n```",
+                        "title": "Reading CSV Files",
+                        "body": "## Read CSV\n\n```python\ndf = pd.read_csv('students.csv')\n\ndf.head()     # first 5 rows\ndf.tail()     # last 5 rows\ndf.info()     # column types and null counts\ndf.describe() # summary statistics\n```",
                     },
                 ],
             },
             {
-                "title": "Paglilinis ng Datos",
+                "title": "Data Cleaning",
                 "lessons": [
                     {
-                        "title": "Pag-handle ng Nawawalang Halaga",
-                        "body": "## Walang Datos (NaN)\n\n```python\ndf.dropna(inplace=True)\ndf['grado'].fillna(df['grado'].mean(), inplace=True)\nprint(df.isnull().sum())\n```",
+                        "title": "Handling Missing Values",
+                        "body": "## Missing Data\n\n```python\n# Check for missing values\nprint(df.isnull().sum())\n\n# Drop rows with any NaN\ndf_clean = df.dropna()\n\n# Fill missing grades with the column mean\ndf['grade'] = df['grade'].fillna(df['grade'].mean())\n\n# Fill missing names with a placeholder\ndf['name'] = df['name'].fillna('Unknown')\n```",
                     },
                 ],
             },
@@ -350,7 +350,7 @@ LMS_COURSES = [
             "passing_percentage": 60,
             "questions": [
                 {
-                    "question": "Anong method ang nagpapakita ng unang 5 row ng isang DataFrame?",
+                    "question": "Which method shows the first 5 rows of a DataFrame?",
                     "type": "Choices",
                     "option_1": "df.head()",  "is_correct_1": 1,
                     "option_2": "df.first()", "is_correct_2": 0,
@@ -358,7 +358,7 @@ LMS_COURSES = [
                     "option_4": "df.show()",  "is_correct_4": 0,
                 },
                 {
-                    "question": "Anong method ang nag-aalis ng mga row na may missing values?",
+                    "question": "Which method removes rows with missing values?",
                     "type": "Choices",
                     "option_1": "df.dropna()", "is_correct_1": 1,
                     "option_2": "df.remove()", "is_correct_2": 0,
@@ -372,28 +372,28 @@ LMS_COURSES = [
 
 LMS_BATCHES = [
     {
-        "title": "Python Bootcamp — Batch 2026-A (Maynila)",
+        "title": "Python Bootcamp — Batch 2026-A (Manila)",
         "start_date": today(),
         "end_date": add_days(today(), 60),
         "start_time": "09:00:00",
         "end_time": "11:00:00",
         "timezone": "Asia/Manila",
-        "description": "Intensibong Python programming bootcamp para sa mga baguhan.",
-        "batch_details": "<p>Live na sesyon tuwing Lunes at Miyerkules, 9–11 AM PHT.</p>",
+        "description": "Intensive Python programming bootcamp for absolute beginners.",
+        "batch_details": "<p>Live sessions every Monday and Wednesday, 9–11 AM PHT. Recordings available after each class.</p>",
         "instructor_email": "maria.santos@educat.local",
-        "course_titles": ["Panimula sa Python Programming"],
+        "course_titles": ["Introduction to Python Programming"],
     },
     {
-        "title": "Web Dev Cohort — Unang Semestre 2026 (Cebu)",
+        "title": "Web Dev Cohort — 1st Semester 2026 (Cebu)",
         "start_date": add_days(today(), 14),
         "end_date": add_days(today(), 90),
         "start_time": "14:00:00",
         "end_time": "16:00:00",
         "timezone": "Asia/Manila",
-        "description": "Matuto ng HTML at CSS at gumawa ng iyong unang responsive na website.",
-        "batch_details": "<p>Biyernes, 2–4 PM PHT. May project review tuwing dalawang linggo.</p>",
+        "description": "Learn HTML and CSS and build your first responsive website.",
+        "batch_details": "<p>Fridays, 2–4 PM PHT. Project reviews every two weeks. Certificate upon completion.</p>",
         "instructor_email": "jose.reyes@educat.local",
-        "course_titles": ["Web Development gamit ang HTML at CSS"],
+        "course_titles": ["Web Development with HTML and CSS"],
     },
 ]
 
