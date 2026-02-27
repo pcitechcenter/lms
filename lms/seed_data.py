@@ -891,6 +891,144 @@ def seed_education():
 
 
 # ---------------------------------------------------------------------------
+# Deletion helpers
+# ---------------------------------------------------------------------------
+
+def _delete_doc(doctype, name):
+    try:
+        doc = frappe.get_doc(doctype, name)
+        # Cancel submitted docs before deleting
+        if getattr(doc, "docstatus", 0) == 1:
+            doc.cancel()
+        frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
+        log(f"deleted {doctype} '{name}'")
+    except Exception as e:
+        log(f"warn  could not delete {doctype} '{name}': {e}")
+
+
+def delete_lms():
+    print("\n[Delete — LMS Enrollments]")
+    student_emails = [u["email"] for u in USERS if "Student" in u.get("roles", [])]
+    for email in student_emails:
+        for enr in frappe.get_all("LMS Enrollment", filters={"member": email}, pluck="name"):
+            _delete_doc("LMS Enrollment", enr)
+        for enr in frappe.get_all("LMS Batch Enrollment", filters={"member": email}, pluck="name"):
+            _delete_doc("LMS Batch Enrollment", enr)
+
+    print("\n[Delete — LMS Batches]")
+    for batch_data in LMS_BATCHES:
+        name = frappe.db.get_value("LMS Batch", {"title": batch_data["title"]}, "name")
+        if name:
+            _delete_doc("LMS Batch", name)
+
+    print("\n[Delete — LMS Courses (chapters, lessons, quizzes)]")
+    for course_data in LMS_COURSES:
+        course_name = frappe.db.get_value("LMS Course", {"title": course_data["title"]}, "name")
+        if not course_name:
+            log(f"skip  '{course_data['title']}' (not found)")
+            continue
+
+        # Delete quiz + questions
+        quiz_data = course_data.get("quiz")
+        if quiz_data:
+            quiz_name = frappe.db.get_value("LMS Quiz", {"title": quiz_data["title"]}, "name")
+            if quiz_name:
+                quiz_doc = frappe.get_doc("LMS Quiz", quiz_name)
+                for row in quiz_doc.questions:
+                    _delete_doc("LMS Question", row.question)
+                _delete_doc("LMS Quiz", quiz_name)
+
+        # Delete lessons then chapters
+        for chapter_ref in frappe.get_all("Course Chapter", filters={"course": course_name}, pluck="name"):
+            chapter_doc = frappe.get_doc("Course Chapter", chapter_ref)
+            for lesson_ref in chapter_doc.lessons:
+                _delete_doc("Course Lesson", lesson_ref.lesson)
+            _delete_doc("Course Chapter", chapter_ref)
+
+        _delete_doc("LMS Course", course_name)
+
+    frappe.db.commit()
+    print("  LMS deletion complete.")
+
+
+def delete_education():
+    print("\n[Delete — Program Enrollments]")
+    for s in STUDENTS:
+        for enr in frappe.get_all(
+            "Program Enrollment",
+            filters={"student": ["like", f"%{s['first_name']}%"]},
+            pluck="name",
+        ):
+            _delete_doc("Program Enrollment", enr)
+
+    print("\n[Delete — Student Groups]")
+    for prog_data in EDU_PROGRAMS:
+        group_name = f"{prog_data['program_abbreviation']} - {ACADEMIC_YEAR_NAME}"
+        if frappe.db.exists("Student Group", group_name):
+            _delete_doc("Student Group", group_name)
+
+    print("\n[Delete — Students]")
+    for s in STUDENTS:
+        name = frappe.db.get_value("Student", {"student_email_id": s["student_email_id"]}, "name")
+        if name:
+            _delete_doc("Student", name)
+
+    print("\n[Delete — Instructors]")
+    for instr in INSTRUCTORS:
+        name = frappe.db.get_value("Instructor", {"instructor_name": instr["instructor_name"]}, "name")
+        if name:
+            _delete_doc("Instructor", name)
+
+    print("\n[Delete — Programs]")
+    for p in EDU_PROGRAMS:
+        if frappe.db.exists("Program", p["program_name"]):
+            _delete_doc("Program", p["program_name"])
+
+    print("\n[Delete — Education Courses]")
+    for c in EDU_COURSES:
+        if frappe.db.exists("Course", c["course_name"]):
+            _delete_doc("Course", c["course_name"])
+
+    print("\n[Delete — Academic Terms & Year]")
+    for t in ACADEMIC_TERMS:
+        name = frappe.db.get_value(
+            "Academic Term",
+            {"academic_year": ACADEMIC_YEAR_NAME, "term_name": t["term_name"]},
+            "name",
+        )
+        if name:
+            _delete_doc("Academic Term", name)
+
+    if frappe.db.exists("Academic Year", ACADEMIC_YEAR_NAME):
+        _delete_doc("Academic Year", ACADEMIC_YEAR_NAME)
+
+    frappe.db.commit()
+    print("  Education deletion complete.")
+
+
+def delete_users():
+    print("\n[Delete — Users]")
+    for u in USERS:
+        if frappe.db.exists("User", u["email"]):
+            _delete_doc("User", u["email"])
+    frappe.db.commit()
+    print("  Users deletion complete.")
+
+
+def delete_all():
+    print("=" * 60)
+    print("  Frappe Bench — Deleting Seed Data")
+    print("=" * 60)
+    delete_lms()
+    delete_education()
+    delete_users()
+    frappe.db.commit()
+    print("\n" + "=" * 60)
+    print("  Deletion complete!")
+    print("=" * 60)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
