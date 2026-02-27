@@ -829,7 +829,19 @@ def seed_education():
 
     # Program Enrollments
     print("\n[Education — Program Enrollments]")
-    first_term = term_name_map.get("1st Semester")
+
+    # Pick the term whose date range covers today; fall back to the last defined term
+    from frappe.utils import getdate
+    active_term = None
+    today_date = getdate(today())
+    for t in ACADEMIC_TERMS:
+        if getdate(t["term_start_date"]) <= today_date <= getdate(t["term_end_date"]):
+            active_term = term_name_map.get(t["term_name"])
+            break
+    if not active_term:
+        active_term = term_name_map.get(ACADEMIC_TERMS[-1]["term_name"])
+    _log(f"using term: {active_term}")
+
     for i, s in enumerate(STUDENTS):
         student_name = student_name_map.get(s["student_email_id"])
         if not student_name:
@@ -851,7 +863,7 @@ def seed_education():
             "student":        student_name,
             "program":        prog_name,
             "academic_year":  ACADEMIC_YEAR_NAME,
-            "academic_term":  first_term,
+            "academic_term":  active_term,
             "enrollment_date": today(),
             "courses": [
                 {"course": course_name_map[cn], "course_name": cn}
