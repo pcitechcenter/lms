@@ -15,7 +15,6 @@ Or run individual sections:
 import frappe
 from frappe.utils import today, add_days, add_months, getdate
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
