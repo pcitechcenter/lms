@@ -4,46 +4,55 @@ Frappe Bench Data Seeder
 Seeds sample data for: Users, LMS, and Education modules.
 
 Usage:
-    bench --site educat.local execute seed_data.seed_all
+    bench --site <site> execute lms.seed_data.seed_all
+    bench --site <site> execute lms.seed_data.delete_all
 
-Or run individual sections:
-    bench --site educat.local execute seed_data.seed_users
-    bench --site educat.local execute seed_data.seed_lms
-    bench --site educat.local execute seed_data.seed_education
+Individual sections:
+    bench --site <site> execute lms.seed_data.seed_users
+    bench --site <site> execute lms.seed_data.seed_lms
+    bench --site <site> execute lms.seed_data.seed_education
+    bench --site <site> execute lms.seed_data.delete_users
+    bench --site <site> execute lms.seed_data.delete_lms
+    bench --site <site> execute lms.seed_data.delete_education
+
+Via console (alternative):
+    import importlib; m = importlib.import_module("lms.seed_data"); m.seed_all()
 """
 
 import frappe
-from frappe.utils import today, add_days, add_months, getdate
+from frappe.utils import today, add_days
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def exists(doctype, filters):
+def _exists(doctype, filters):
     return frappe.db.exists(doctype, filters)
 
 
-def get_or_create(doctype, filters, fields=None):
-    """Return existing doc name or create and return new one."""
-    name = frappe.db.exists(doctype, filters)
-    if name:
-        return name if isinstance(name, str) else name[0][0]
-    doc = frappe.get_doc({"doctype": doctype, **(fields or filters)})
-    doc.insert(ignore_permissions=True)
-    return doc.name
-
-
-def log(msg):
+def _log(msg):
     print(f"  → {msg}")
+
+
+def _delete_doc(doctype, name):
+    try:
+        doc = frappe.get_doc(doctype, name)
+        if getattr(doc, "docstatus", 0) == 1:
+            doc.cancel()
+        frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
+        _log(f"deleted  {doctype} '{name}'")
+    except Exception as e:
+        _log(f"warn     could not delete {doctype} '{name}': {e}")
 
 
 # ---------------------------------------------------------------------------
 # 1. USERS
 # ---------------------------------------------------------------------------
 
-# NOTE: These are seed/dev passwords only. Change before going to production.
+# NOTE: Dev/seed passwords only — change before production.
 USERS = [
-    # Instructors (Course Creator + Instructor roles)
+    # Instructors
     {
         "email": "maria.santos@educat.local",
         "first_name": "Maria",
@@ -62,7 +71,7 @@ USERS = [
         "new_password": "Test@12345",
         "roles": ["Instructor", "Course Creator", "Academics User"],
     },
-    # Students (LMS Student + Student roles)
+    # Students
     {
         "email": "juan.delacruz@educat.local",
         "first_name": "Juan",
@@ -108,7 +117,7 @@ USERS = [
         "new_password": "Test@12345",
         "roles": ["Student", "LMS Student"],
     },
-    # LMS/Platform Administrator
+    # Platform Administrator
     {
         "email": "rosario.garcia@educat.local",
         "first_name": "Rosario",
@@ -125,25 +134,21 @@ def seed_users():
     print("\n[Users]")
     created = 0
     for u in USERS:
-        if exists("User", {"email": u["email"]}):
-            log(f"skip  {u['email']} (exists)")
+        if _exists("User", {"email": u["email"]}):
+            _log(f"skip  {u['email']} (exists)")
             continue
 
-        roles = u.get("roles", [])
+        roles    = u.get("roles", [])
         password = u.get("new_password")
-        user_fields = {k: v for k, v in u.items() if k not in ("roles", "new_password")}
-        doc = frappe.get_doc({
-            "doctype": "User",
-            "send_welcome_email": 0,
-            "enabled": 1,
-            **user_fields,
-        })
-        # Attach roles (skip silently if role doesn't exist in this instance)
+        fields   = {k: v for k, v in u.items() if k not in ("roles", "new_password")}
+
+        doc = frappe.get_doc({"doctype": "User", "send_welcome_email": 0, "enabled": 1, **fields})
+
         for role in roles:
             if frappe.db.exists("Role", role):
                 doc.append("roles", {"role": role})
             else:
-                log(f"  warn  role '{role}' not found — skipped")
+                _log(f"  warn  role '{role}' not found — skipped")
 
         doc.insert(ignore_permissions=True)
 
@@ -151,11 +156,20 @@ def seed_users():
             from frappe.utils.password import update_password
             update_password(doc.name, password)
 
-        log(f"created {doc.email} (password set)")
+        _log(f"created  {doc.email} (password set)")
         created += 1
 
     frappe.db.commit()
     print(f"  Done — {created} new users created.")
+
+
+def delete_users():
+    print("\n[Delete — Users]")
+    for u in USERS:
+        if frappe.db.exists("User", u["email"]):
+            _delete_doc("User", u["email"])
+    frappe.db.commit()
+    print("  Users deletion complete.")
 
 
 # ---------------------------------------------------------------------------
@@ -175,16 +189,16 @@ LMS_COURSES = [
                 "lessons": [
                     {
                         "title": "Pag-install ng Python at Pag-setup",
-                        "body": "## I-setup ang Python\n\nI-download ang Python 3.x mula sa python.org.\n\n```bash\npython --version\n```\n\nSiguraduhing naka-install na bago magpatuloy sa susunod na aralin.",
+                        "body": "## I-setup ang Python\n\nI-download ang Python 3.x mula sa python.org.\n\n```bash\npython --version\n```",
                         "include_in_preview": 1,
                     },
                     {
                         "title": "Mga Variable at Uri ng Datos",
-                        "body": "## Mga Variable\n\nAng Python ay dynamically typed — hindi na kailangang ideklara ang uri.\n\n```python\npangalan = 'Juan dela Cruz'\nedad = 20\ngrado = 89.5\nmula_maynila = True\n```",
+                        "body": "## Mga Variable\n\n```python\npangalan = 'Juan dela Cruz'\nedad = 20\ngrado = 89.5\nmula_maynila = True\n```",
                     },
                     {
                         "title": "Control Flow: if/else at mga Loop",
-                        "body": "## Kondisyon at Loop\n\n```python\nmga_rehiyon = ['NCR', 'Cebu', 'Davao', 'Iloilo']\n\nfor rehiyon in mga_rehiyon:\n    if rehiyon == 'NCR':\n        print(f'{rehiyon} — Kabisera')\n    else:\n        print(f'{rehiyon} — Probinsya')\n```",
+                        "body": "## Kondisyon at Loop\n\n```python\nmga_rehiyon = ['NCR', 'Cebu', 'Davao', 'Iloilo']\nfor rehiyon in mga_rehiyon:\n    if rehiyon == 'NCR':\n        print(f'{rehiyon} — Kabisera')\n    else:\n        print(f'{rehiyon} — Probinsya')\n```",
                     },
                 ],
             },
@@ -197,7 +211,7 @@ LMS_COURSES = [
                     },
                     {
                         "title": "Paggamit ng mga Module",
-                        "body": "## Mga Built-in Module\n\n```python\nimport math\nimport random\n\nprint(math.pi)          # 3.14159...\nprint(random.randint(1, 100))  # random na numero\n```",
+                        "body": "## Mga Built-in Module\n\n```python\nimport math\nimport random\n\nprint(math.pi)\nprint(random.randint(1, 100))\n```",
                     },
                 ],
             },
@@ -234,10 +248,10 @@ LMS_COURSES = [
                 {
                     "question": "Gumagamit ang Python ng indentation para tukuyin ang mga code block.",
                     "type": "Choices",
-                    "option_1": "Tama",   "is_correct_1": 1,
-                    "option_2": "Mali",   "is_correct_2": 0,
-                    "option_3": "Minsan", "is_correct_3": 0,
-                    "option_4": "Sa loop lamang", "is_correct_4": 0,
+                    "option_1": "Tama",          "is_correct_1": 1,
+                    "option_2": "Mali",          "is_correct_2": 0,
+                    "option_3": "Minsan",        "is_correct_3": 0,
+                    "option_4": "Sa loop lamang","is_correct_4": 0,
                 },
             ],
         },
@@ -254,12 +268,12 @@ LMS_COURSES = [
                 "lessons": [
                     {
                         "title": "Estruktura ng HTML Document",
-                        "body": "## HTML Boilerplate\n\n```html\n<!DOCTYPE html>\n<html lang='fil'>\n  <head>\n    <meta charset='UTF-8'>\n    <title>Aking Pahina</title>\n  </head>\n  <body>\n    <h1>Mabuhay!</h1>\n    <p>Ito ang aking unang webpage.</p>\n  </body>\n</html>\n```",
+                        "body": "## HTML Boilerplate\n\n```html\n<!DOCTYPE html>\n<html lang='fil'>\n  <head>\n    <meta charset='UTF-8'>\n    <title>Aking Pahina</title>\n  </head>\n  <body>\n    <h1>Mabuhay!</h1>\n  </body>\n</html>\n```",
                         "include_in_preview": 1,
                     },
                     {
                         "title": "Mga Karaniwang HTML Tag",
-                        "body": "## Mga Tag\n\n- `<h1>`–`<h6>` — mga pamagat\n- `<p>` — talata\n- `<a href=''>` — link\n- `<img src='' alt=''>` — larawan\n- `<ul>` / `<ol>` — listahan\n- `<table>` — talahanayan",
+                        "body": "## Mga Tag\n\n- `<h1>`–`<h6>` — mga pamagat\n- `<p>` — talata\n- `<a href=''>` — link\n- `<img src='' alt=''>` — larawan\n- `<ul>` / `<ol>` — listahan",
                     },
                 ],
             },
@@ -268,7 +282,7 @@ LMS_COURSES = [
                 "lessons": [
                     {
                         "title": "Mga Selector at Property",
-                        "body": "## CSS Basics\n\n```css\nbody {\n  font-family: 'Arial', sans-serif;\n  background-color: #f0f4f8;\n  color: #1a202c;\n}\n\nh1 {\n  color: #0038a8; /* asul ng Pilipinas */\n}\n```",
+                        "body": "## CSS Basics\n\n```css\nbody {\n  font-family: 'Arial', sans-serif;\n  background-color: #f0f4f8;\n}\nh1 {\n  color: #0038a8; /* asul ng Pilipinas */\n}\n```",
                     },
                     {
                         "title": "Flexbox na Layout",
@@ -284,10 +298,10 @@ LMS_COURSES = [
                 {
                     "question": "Ano ang ibig sabihin ng HTML?",
                     "type": "Choices",
-                    "option_1": "HyperText Markup Language",      "is_correct_1": 1,
-                    "option_2": "High Text Machine Language",      "is_correct_2": 0,
-                    "option_3": "HyperText Machine Language",      "is_correct_3": 0,
-                    "option_4": "HyperTransfer Markup Language",   "is_correct_4": 0,
+                    "option_1": "HyperText Markup Language",     "is_correct_1": 1,
+                    "option_2": "High Text Machine Language",    "is_correct_2": 0,
+                    "option_3": "HyperText Machine Language",    "is_correct_3": 0,
+                    "option_4": "HyperTransfer Markup Language", "is_correct_4": 0,
                 },
                 {
                     "question": "Anong CSS property ang nagkokontrol sa kulay ng teksto?",
@@ -303,7 +317,7 @@ LMS_COURSES = [
     {
         "title": "Pagsusuri ng Datos gamit ang Pandas",
         "short_introduction": "Manipulahin at suriin ang datos gamit ang Pandas library ng Python.",
-        "description": "<p>Sinasaklaw ang DataFrame, paglilinis ng datos, paggrugrupo, pagsasama, at basic na visualisasyon. Gagamitin ang data mula sa kontekstong Pilipino (populasyon, kalakalan, edukasyon).</p>",
+        "description": "<p>Sinasaklaw ang DataFrame, paglilinis ng datos, paggrugrupo, at basic na visualisasyon gamit ang datos mula sa kontekstong Pilipino.</p>",
         "category_name": "Data Science",
         "instructor_email": "maria.santos@educat.local",
         "chapters": [
@@ -312,12 +326,12 @@ LMS_COURSES = [
                 "lessons": [
                     {
                         "title": "Paggawa ng DataFrame",
-                        "body": "## DataFrame\n\n```python\nimport pandas as pd\n\n# Datos ng mga estudyante\ndf = pd.DataFrame({\n    'pangalan': ['Juan dela Cruz', 'Ana Bautista', 'Miguel Ocampo'],\n    'rehiyon':  ['NCR', 'Cebu', 'Davao'],\n    'grado':    [88, 92, 85]\n})\nprint(df)\n```",
+                        "body": "## DataFrame\n\n```python\nimport pandas as pd\n\ndf = pd.DataFrame({\n    'pangalan': ['Juan dela Cruz', 'Ana Bautista', 'Miguel Ocampo'],\n    'rehiyon':  ['NCR', 'Cebu', 'Davao'],\n    'grado':    [88, 92, 85]\n})\nprint(df)\n```",
                         "include_in_preview": 1,
                     },
                     {
                         "title": "Pagbabasa ng CSV Files",
-                        "body": "## Basahin ang CSV\n\n```python\ndf = pd.read_csv('mga_estudyante.csv')\ndf.head()       # unang 5 row\ndf.info()       # impormasyon ng kolumna\ndf.describe()   # estadistika\n```",
+                        "body": "## Basahin ang CSV\n\n```python\ndf = pd.read_csv('mga_estudyante.csv')\ndf.head()\ndf.info()\ndf.describe()\n```",
                     },
                 ],
             },
@@ -326,7 +340,7 @@ LMS_COURSES = [
                 "lessons": [
                     {
                         "title": "Pag-handle ng Nawawalang Halaga",
-                        "body": "## Walang Datos (NaN)\n\n```python\n# Alisin ang mga row na may NaN\ndf.dropna(inplace=True)\n\n# Palitan ng default na halaga\ndf['grado'].fillna(df['grado'].mean(), inplace=True)\n\nprint(df.isnull().sum())  # bilang ng nawawalang halaga bawat kolumna\n```",
+                        "body": "## Walang Datos (NaN)\n\n```python\ndf.dropna(inplace=True)\ndf['grado'].fillna(df['grado'].mean(), inplace=True)\nprint(df.isnull().sum())\n```",
                     },
                 ],
             },
@@ -338,18 +352,18 @@ LMS_COURSES = [
                 {
                     "question": "Anong method ang nagpapakita ng unang 5 row ng isang DataFrame?",
                     "type": "Choices",
-                    "option_1": "df.head()",   "is_correct_1": 1,
-                    "option_2": "df.first()",  "is_correct_2": 0,
-                    "option_3": "df.top()",    "is_correct_3": 0,
-                    "option_4": "df.show()",   "is_correct_4": 0,
+                    "option_1": "df.head()",  "is_correct_1": 1,
+                    "option_2": "df.first()", "is_correct_2": 0,
+                    "option_3": "df.top()",   "is_correct_3": 0,
+                    "option_4": "df.show()",  "is_correct_4": 0,
                 },
                 {
                     "question": "Anong method ang nag-aalis ng mga row na may missing values?",
                     "type": "Choices",
-                    "option_1": "df.dropna()",  "is_correct_1": 1,
-                    "option_2": "df.remove()",  "is_correct_2": 0,
-                    "option_3": "df.clean()",   "is_correct_3": 0,
-                    "option_4": "df.delete()",  "is_correct_4": 0,
+                    "option_1": "df.dropna()", "is_correct_1": 1,
+                    "option_2": "df.remove()", "is_correct_2": 0,
+                    "option_3": "df.clean()",  "is_correct_3": 0,
+                    "option_4": "df.delete()", "is_correct_4": 0,
                 },
             ],
         },
@@ -365,7 +379,7 @@ LMS_BATCHES = [
         "end_time": "11:00:00",
         "timezone": "Asia/Manila",
         "description": "Intensibong Python programming bootcamp para sa mga baguhan.",
-        "batch_details": "<p>Live na sesyon tuwing Lunes at Miyerkules, 9–11 AM PHT. Available ang mga recording pagkatapos ng bawat klase.</p>",
+        "batch_details": "<p>Live na sesyon tuwing Lunes at Miyerkules, 9–11 AM PHT.</p>",
         "instructor_email": "maria.santos@educat.local",
         "course_titles": ["Panimula sa Python Programming"],
     },
@@ -377,260 +391,258 @@ LMS_BATCHES = [
         "end_time": "16:00:00",
         "timezone": "Asia/Manila",
         "description": "Matuto ng HTML at CSS at gumawa ng iyong unang responsive na website.",
-        "batch_details": "<p>Biyernes, 2–4 PM PHT. May project review tuwing dalawang linggo. Libre ang certificate sa mga pumasa.</p>",
+        "batch_details": "<p>Biyernes, 2–4 PM PHT. May project review tuwing dalawang linggo.</p>",
         "instructor_email": "jose.reyes@educat.local",
         "course_titles": ["Web Development gamit ang HTML at CSS"],
     },
 ]
 
 
-def _ensure_lms_category(category_name):
-    if not category_name:
+def _ensure_lms_category(name):
+    if not name:
         return None
-    if exists("LMS Category", {"name": category_name}):
-        return category_name
-    cat = frappe.get_doc({"doctype": "LMS Category", "name": category_name,
-                          "category_name": category_name})
+    if _exists("LMS Category", {"name": name}):
+        return name
     try:
-        cat.insert(ignore_permissions=True)
-        return cat.name
+        doc = frappe.get_doc({"doctype": "LMS Category", "name": name, "category_name": name})
+        doc.insert(ignore_permissions=True)
+        return doc.name
     except Exception:
         return None
 
 
-def _create_lms_question(q_data):
-    title = q_data["question"][:80]
-    if exists("LMS Question", {"question": q_data["question"]}):
-        return frappe.db.get_value("LMS Question", {"question": q_data["question"]}, "name")
-    q = frappe.get_doc({
-        "doctype": "LMS Question",
-        "question": q_data["question"],
-        "type": q_data["type"],
-        "option_1": q_data.get("option_1", ""),
-        "is_correct_1": q_data.get("is_correct_1", 0),
-        "option_2": q_data.get("option_2", ""),
-        "is_correct_2": q_data.get("is_correct_2", 0),
-        "option_3": q_data.get("option_3", ""),
-        "is_correct_3": q_data.get("is_correct_3", 0),
-        "option_4": q_data.get("option_4", ""),
-        "is_correct_4": q_data.get("is_correct_4", 0),
+def _create_lms_question(q):
+    existing = frappe.db.get_value("LMS Question", {"question": q["question"]}, "name")
+    if existing:
+        return existing
+    doc = frappe.get_doc({
+        "doctype":    "LMS Question",
+        "question":   q["question"],
+        "type":       q["type"],
+        "option_1":   q.get("option_1", ""),
+        "is_correct_1": q.get("is_correct_1", 0),
+        "option_2":   q.get("option_2", ""),
+        "is_correct_2": q.get("is_correct_2", 0),
+        "option_3":   q.get("option_3", ""),
+        "is_correct_3": q.get("is_correct_3", 0),
+        "option_4":   q.get("option_4", ""),
+        "is_correct_4": q.get("is_correct_4", 0),
     })
-    q.insert(ignore_permissions=True)
-    return q.name
+    doc.insert(ignore_permissions=True)
+    return doc.name
 
 
-def _create_lms_quiz(quiz_data, course_name):
-    title = quiz_data["title"]
-    if exists("LMS Quiz", {"title": title}):
-        log(f"  skip  quiz '{title}' (exists)")
-        return frappe.db.get_value("LMS Quiz", {"title": title}, "name")
-
-    question_rows = []
-    for q in quiz_data.get("questions", []):
-        q_name = _create_lms_question(q)
-        question_rows.append({"question": q_name, "marks": 1})
-
-    quiz = frappe.get_doc({
-        "doctype": "LMS Quiz",
-        "title": title,
+def _create_lms_quiz(quiz_data):
+    existing = frappe.db.get_value("LMS Quiz", {"title": quiz_data["title"]}, "name")
+    if existing:
+        _log(f"  skip  quiz '{quiz_data['title']}' (exists)")
+        return existing
+    doc = frappe.get_doc({
+        "doctype":            "LMS Quiz",
+        "title":              quiz_data["title"],
         "passing_percentage": quiz_data["passing_percentage"],
-        "max_attempts": 3,
-        "show_answers": 1,
-        "questions": question_rows,
+        "max_attempts":       3,
+        "show_answers":       1,
+        "questions": [
+            {"question": _create_lms_question(q), "marks": 1}
+            for q in quiz_data.get("questions", [])
+        ],
     })
-    quiz.insert(ignore_permissions=True)
-    log(f"  created quiz '{title}'")
-    return quiz.name
+    doc.insert(ignore_permissions=True)
+    _log(f"  created quiz '{doc.title}'")
+    return doc.name
 
 
 def seed_lms():
     print("\n[LMS Courses]")
-    course_name_map = {}  # title → doc.name
+    course_name_map = {}
 
     for course_data in LMS_COURSES:
         title = course_data["title"]
 
-        if exists("LMS Course", {"title": title}):
-            log(f"skip  '{title}' (exists)")
+        if _exists("LMS Course", {"title": title}):
+            _log(f"skip  '{title}' (exists)")
             course_name_map[title] = frappe.db.get_value("LMS Course", {"title": title}, "name")
             continue
 
-        category = _ensure_lms_category(course_data.get("category_name"))
-        instructor_email = course_data["instructor_email"]
-
-        # Build chapter + lesson tree
-        chapter_refs = []
-        for chapter_data in course_data.get("chapters", []):
-            # Create lessons first
-            lesson_refs = []
-            for lesson_data in chapter_data.get("lessons", []):
-                lesson_title = lesson_data["title"]
-                # Lessons are uniquely found by title + chapter; create without chapter first
-                lesson = frappe.get_doc({
-                    "doctype": "Course Lesson",
-                    "title": lesson_title,
-                    "body": lesson_data.get("body", ""),
-                    "include_in_preview": lesson_data.get("include_in_preview", 0),
-                    # chapter is required — set a placeholder; will set after chapter creation
-                })
-                # We must set chapter but it doesn't exist yet — skip for now,
-                # will update after chapter creation below.
-                lesson_refs.append(lesson_data)  # store raw data
-
-            # Create chapter (without lessons table first)
-            chapter = frappe.get_doc({
-                "doctype": "Course Chapter",
-                "title": chapter_data["title"],
-                # course will be set after LMS Course creation
-            })
-            # course is required on chapter too; we'll set it post-course creation
-
-            chapter_refs.append({
-                "chapter_data": chapter_data,
-            })
-
-        # Create course with instructors
-        quiz_data = course_data.get("quiz")
-        quiz_name = None
-
+        # 1. Insert course
         course_doc = frappe.get_doc({
-            "doctype": "LMS Course",
-            "title": title,
+            "doctype":            "LMS Course",
+            "title":              title,
             "short_introduction": course_data["short_introduction"],
-            "description": course_data["description"],
-            "published": 1,
+            "description":        course_data["description"],
+            "published":          1,
             "enable_certification": 1,
-            "instructors": [{"instructor": instructor_email}],
+            "instructors":        [{"instructor": course_data["instructor_email"]}],
         })
+        category = _ensure_lms_category(course_data.get("category_name"))
         if category:
             course_doc.category = category
-
         course_doc.insert(ignore_permissions=True)
         course_name = course_doc.name
         course_name_map[title] = course_name
-        log(f"created course '{title}' → {course_name}")
+        _log(f"created course '{title}' → {course_name}")
 
-        # Now create chapters and lessons with proper references
-        chapter_doc_names = []
-        for chapter_info in course_data.get("chapters", []):
-            chapter_doc = frappe.get_doc({
+        # 2. Create chapters + lessons
+        chapter_names = []
+        for ch_data in course_data.get("chapters", []):
+
+            # Insert chapter
+            ch_doc = frappe.get_doc({
                 "doctype": "Course Chapter",
-                "title": chapter_info["title"],
-                "course": course_name,
+                "title":   ch_data["title"],
+                "course":  course_name,
             })
-            chapter_doc.insert(ignore_permissions=True)
-            chapter_doc_name = chapter_doc.name
+            ch_doc.insert(ignore_permissions=True)
+            ch_name = ch_doc.name
 
-            # Reload to avoid TimestampMismatchError from background hooks
-            chapter_doc = frappe.get_doc("Course Chapter", chapter_doc_name)
-
-            # Create lessons and attach to chapter
-            for lesson_data in chapter_info.get("lessons", []):
-                lesson_doc = frappe.get_doc({
-                    "doctype": "Course Lesson",
-                    "title": lesson_data["title"],
-                    "chapter": chapter_doc_name,
-                    "body": lesson_data.get("body", ""),
-                    "include_in_preview": lesson_data.get("include_in_preview", 0),
+            # Insert all lessons, collecting their names
+            lesson_names = []
+            for ls_data in ch_data.get("lessons", []):
+                ls_doc = frappe.get_doc({
+                    "doctype":          "Course Lesson",
+                    "title":            ls_data["title"],
+                    "chapter":          ch_name,
+                    "body":             ls_data.get("body", ""),
+                    "include_in_preview": ls_data.get("include_in_preview", 0),
                 })
-                lesson_doc.insert(ignore_permissions=True)
-                chapter_doc.append("lessons", {"lesson": lesson_doc.name})
+                ls_doc.insert(ignore_permissions=True)
+                lesson_names.append(ls_doc.name)
 
-            chapter_doc.save(ignore_permissions=True)
-            chapter_doc_names.append(chapter_doc_name)
+            # Reload chapter fresh (background hooks may have changed its timestamp)
+            ch_doc = frappe.get_doc("Course Chapter", ch_name)
+            for ln in lesson_names:
+                ch_doc.append("lessons", {"lesson": ln})
+            ch_doc.save(ignore_permissions=True)
+            chapter_names.append(ch_name)
 
-        # Reload course to avoid TimestampMismatchError from background hooks
+        # 3. Reload course fresh and attach all chapters
         course_doc = frappe.get_doc("LMS Course", course_name)
-        for ch_name in chapter_doc_names:
-            course_doc.append("chapters", {"chapter": ch_name})
+        for ch in chapter_names:
+            course_doc.append("chapters", {"chapter": ch})
         course_doc.save(ignore_permissions=True)
 
-        # Create quiz
-        if quiz_data:
-            quiz_name = _create_lms_quiz(quiz_data, course_name)
-
-        log(f"  {len(chapter_doc_names)} chapters, quiz: {quiz_name or 'none'}")
+        # 4. Quiz
+        quiz_data = course_data.get("quiz")
+        quiz_name = _create_lms_quiz(quiz_data) if quiz_data else None
+        _log(f"  {len(chapter_names)} chapters, quiz: {quiz_name or 'none'}")
 
     frappe.db.commit()
 
-    # -----------------------------------------------------------------------
-    # LMS Batches
-    # -----------------------------------------------------------------------
+    # Batches
     print("\n[LMS Batches]")
     for batch_data in LMS_BATCHES:
         title = batch_data["title"]
-        if exists("LMS Batch", {"title": title}):
-            log(f"skip  '{title}' (exists)")
+        if _exists("LMS Batch", {"title": title}):
+            _log(f"skip  '{title}' (exists)")
             continue
 
-        courses_rows = []
-        for ct in batch_data.get("course_titles", []):
-            cn = course_name_map.get(ct)
-            if cn:
-                courses_rows.append({"course": cn, "title": ct})
-
         batch_doc = frappe.get_doc({
-            "doctype": "LMS Batch",
-            "title": title,
-            "start_date": batch_data["start_date"],
-            "end_date": batch_data["end_date"],
-            "start_time": batch_data["start_time"],
-            "end_time": batch_data["end_time"],
-            "timezone": batch_data["timezone"],
-            "description": batch_data["description"],
+            "doctype":      "LMS Batch",
+            "title":        title,
+            "start_date":   batch_data["start_date"],
+            "end_date":     batch_data["end_date"],
+            "start_time":   batch_data["start_time"],
+            "end_time":     batch_data["end_time"],
+            "timezone":     batch_data["timezone"],
+            "description":  batch_data["description"],
             "batch_details": batch_data["batch_details"],
-            "published": 1,
-            "instructors": [{"instructor": batch_data["instructor_email"]}],
-            "courses": courses_rows,
+            "published":    1,
+            "instructors":  [{"instructor": batch_data["instructor_email"]}],
+            "courses": [
+                {"course": course_name_map[ct], "title": ct}
+                for ct in batch_data.get("course_titles", [])
+                if ct in course_name_map
+            ],
         })
         batch_doc.insert(ignore_permissions=True)
-        log(f"created batch '{title}'")
+        _log(f"created batch '{title}'")
 
     frappe.db.commit()
 
-    # -----------------------------------------------------------------------
-    # LMS Enrollments
-    # -----------------------------------------------------------------------
+    # Enrollments
     print("\n[LMS Enrollments]")
-    student_emails = [u["email"] for u in USERS if "Student" in u.get("roles", [])]
+    student_emails = [u["email"] for u in USERS if "LMS Student" in u.get("roles", [])]
     for i, email in enumerate(student_emails):
-        # Enroll each student in one or two courses (round-robin)
-        for j, course_title in enumerate(LMS_COURSES):
+        for j, cd in enumerate(LMS_COURSES):
             if (i + j) % 2 == 0:
-                continue  # spread enrolments — not every student in every course
-            cn = course_name_map.get(course_title["title"])
+                continue
+            cn = course_name_map.get(cd["title"])
             if not cn:
                 continue
-            if exists("LMS Enrollment", {"member": email, "course": cn}):
-                log(f"skip  enrollment {email} → {cn} (exists)")
+            if _exists("LMS Enrollment", {"member": email, "course": cn}):
+                _log(f"skip  enrollment {email} → {cn} (exists)")
                 continue
-            enr = frappe.get_doc({
-                "doctype": "LMS Enrollment",
-                "member": email,
-                "course": cn,
+            frappe.get_doc({
+                "doctype":     "LMS Enrollment",
+                "member":      email,
+                "course":      cn,
                 "member_type": "Student",
-            })
-            enr.insert(ignore_permissions=True)
-            log(f"enrolled {email} → {cn}")
+            }).insert(ignore_permissions=True)
+            _log(f"enrolled  {email} → {cn}")
 
     frappe.db.commit()
     print("  LMS seeding complete.")
+
+
+def delete_lms():
+    print("\n[Delete — LMS Enrollments]")
+    student_emails = [u["email"] for u in USERS if "LMS Student" in u.get("roles", [])]
+    for email in student_emails:
+        for name in frappe.get_all("LMS Enrollment", filters={"member": email}, pluck="name"):
+            _delete_doc("LMS Enrollment", name)
+        for name in frappe.get_all("LMS Batch Enrollment", filters={"member": email}, pluck="name"):
+            _delete_doc("LMS Batch Enrollment", name)
+
+    print("\n[Delete — LMS Batches]")
+    for bd in LMS_BATCHES:
+        name = frappe.db.get_value("LMS Batch", {"title": bd["title"]}, "name")
+        if name:
+            _delete_doc("LMS Batch", name)
+
+    print("\n[Delete — LMS Courses]")
+    for cd in LMS_COURSES:
+        course_name = frappe.db.get_value("LMS Course", {"title": cd["title"]}, "name")
+        if not course_name:
+            _log(f"skip  '{cd['title']}' (not found)")
+            continue
+
+        # Quiz + questions
+        quiz_data = cd.get("quiz")
+        if quiz_data:
+            quiz_name = frappe.db.get_value("LMS Quiz", {"title": quiz_data["title"]}, "name")
+            if quiz_name:
+                quiz_doc = frappe.get_doc("LMS Quiz", quiz_name)
+                for row in quiz_doc.questions:
+                    _delete_doc("LMS Question", row.question)
+                _delete_doc("LMS Quiz", quiz_name)
+
+        # Lessons → chapters
+        for ch_name in frappe.get_all("Course Chapter", filters={"course": course_name}, pluck="name"):
+            ch_doc = frappe.get_doc("Course Chapter", ch_name)
+            for ls_row in ch_doc.lessons:
+                _delete_doc("Course Lesson", ls_row.lesson)
+            _delete_doc("Course Chapter", ch_name)
+
+        _delete_doc("LMS Course", course_name)
+
+    frappe.db.commit()
+    print("  LMS deletion complete.")
 
 
 # ---------------------------------------------------------------------------
 # 3. EDUCATION
 # ---------------------------------------------------------------------------
 
-# Philippine academic calendar (CHED standard: 1st Sem Aug–Dec, 2nd Sem Jan–May)
 ACADEMIC_YEAR_NAME = "A.Y. 2025-2026"
 ACADEMIC_TERMS = [
     {
-        "term_name": "1st Semester",
+        "term_name":       "1st Semester",
         "term_start_date": "2025-08-01",
         "term_end_date":   "2025-12-20",
     },
     {
-        "term_name": "2nd Semester",
+        "term_name":       "2nd Semester",
         "term_start_date": "2026-01-05",
         "term_end_date":   "2026-05-31",
     },
@@ -638,7 +650,7 @@ ACADEMIC_TERMS = [
 
 EDU_PROGRAMS = [
     {
-        "program_name": "Bachelor of Science in Computer Science",
+        "program_name":         "Bachelor of Science in Computer Science",
         "program_abbreviation": "BSCS",
         "courses": [
             "Data Structures and Algorithms",
@@ -648,7 +660,7 @@ EDU_PROGRAMS = [
         ],
     },
     {
-        "program_name": "Bachelor of Science in Information Technology",
+        "program_name":         "Bachelor of Science in Information Technology",
         "program_abbreviation": "BSIT",
         "courses": [
             "Web Systems and Technologies",
@@ -660,39 +672,18 @@ EDU_PROGRAMS = [
 ]
 
 EDU_COURSES = [
-    {
-        "course_name": "Data Structures and Algorithms",
-        "description": "Mga istruktura ng datos (arrays, linked list, tree, graph) at disenyo ng algorithm kasama ang complexity analysis.",
-    },
-    {
-        "course_name": "Database Management Systems",
-        "description": "Relational na database, SQL, normalisasyon, indexing, at transaksyon gamit ang MySQL/MariaDB.",
-    },
-    {
-        "course_name": "Operating Systems",
-        "description": "Mga konsepto ng OS: process management, memory management, file system, at seguridad.",
-    },
-    {
-        "course_name": "Software Engineering",
-        "description": "SDLC models, agile methodology, software testing, at project management na angkop sa industriya ng Pilipinas.",
-    },
-    {
-        "course_name": "Web Systems and Technologies",
-        "description": "Pagbuo ng web application gamit ang HTML, CSS, JavaScript, at PHP/Laravel.",
-    },
-    {
-        "course_name": "Systems Analysis and Design",
-        "description": "Pag-aaral at pagdidisenyo ng impormasyon sistemo gamit ang UML at structured methodologies.",
-    },
-    {
-        "course_name": "ICT Project Management",
-        "description": "Pamamahala ng ICT proyekto: scope, oras, gastos, kalidad, at risk management ayon sa PMBOK.",
-    },
+    {"course_name": "Data Structures and Algorithms",  "description": "Mga istruktura ng datos at disenyo ng algorithm kasama ang complexity analysis."},
+    {"course_name": "Database Management Systems",     "description": "Relational na database, SQL, normalisasyon, indexing, at transaksyon gamit ang MariaDB."},
+    {"course_name": "Operating Systems",               "description": "Process management, memory management, file system, at seguridad ng OS."},
+    {"course_name": "Software Engineering",            "description": "SDLC models, agile methodology, software testing, at project management."},
+    {"course_name": "Web Systems and Technologies",    "description": "Pagbuo ng web application gamit ang HTML, CSS, JavaScript, at PHP/Laravel."},
+    {"course_name": "Systems Analysis and Design",     "description": "Pagdidisenyo ng impormasyon sistemo gamit ang UML at structured methodologies."},
+    {"course_name": "ICT Project Management",          "description": "Pamamahala ng ICT proyekto: scope, oras, gastos, kalidad, at risk management."},
 ]
 
 INSTRUCTORS = [
-    {"instructor_name": "Maria Santos", "user": "maria.santos@educat.local"},
-    {"instructor_name": "Jose Reyes",   "user": "jose.reyes@educat.local"},
+    {"instructor_name": "Maria Santos", "email": "maria.santos@educat.local"},
+    {"instructor_name": "Jose Reyes",   "email": "jose.reyes@educat.local"},
 ]
 
 STUDENTS = [
@@ -705,265 +696,190 @@ STUDENTS = [
 
 
 def seed_education():
-    print("\n[Education — Academic Year & Terms]")
-
     # Academic Year
-    ay_name = get_or_create(
-        "Academic Year",
-        {"academic_year_name": ACADEMIC_YEAR_NAME},
-        {
+    print("\n[Education — Academic Year & Terms]")
+    if not _exists("Academic Year", {"academic_year_name": ACADEMIC_YEAR_NAME}):
+        frappe.get_doc({
+            "doctype":            "Academic Year",
             "academic_year_name": ACADEMIC_YEAR_NAME,
-            "year_start_date": "2025-08-01",
-            "year_end_date": "2026-05-31",
-        },
-    )
-    log(f"academic year: {ay_name}")
+            "year_start_date":    "2025-08-01",
+            "year_end_date":      "2026-05-31",
+        }).insert(ignore_permissions=True)
+        _log(f"created academic year '{ACADEMIC_YEAR_NAME}'")
+    else:
+        _log(f"skip  academic year '{ACADEMIC_YEAR_NAME}' (exists)")
 
     # Academic Terms
     term_name_map = {}
     for t in ACADEMIC_TERMS:
-        # Academic Term autoname is based on academic_year + term_name
-        term_title = f"{ay_name} ({t['term_name']})"
-        existing = frappe.db.exists("Academic Term", {"academic_year": ay_name, "term_name": t["term_name"]})
+        existing = frappe.db.exists("Academic Term", {
+            "academic_year": ACADEMIC_YEAR_NAME,
+            "term_name":     t["term_name"],
+        })
         if existing:
-            log(f"skip  term '{t['term_name']}' (exists)")
+            _log(f"skip  term '{t['term_name']}' (exists)")
             term_name_map[t["term_name"]] = existing
         else:
-            term_doc = frappe.get_doc({
-                "doctype": "Academic Term",
-                "academic_year": ay_name,
-                "term_name": t["term_name"],
+            doc = frappe.get_doc({
+                "doctype":         "Academic Term",
+                "academic_year":   ACADEMIC_YEAR_NAME,
+                "term_name":       t["term_name"],
                 "term_start_date": t["term_start_date"],
-                "term_end_date": t["term_end_date"],
+                "term_end_date":   t["term_end_date"],
             })
-            term_doc.insert(ignore_permissions=True)
-            term_name_map[t["term_name"]] = term_doc.name
-            log(f"created term '{term_doc.name}'")
+            doc.insert(ignore_permissions=True)
+            term_name_map[t["term_name"]] = doc.name
+            _log(f"created term '{doc.name}'")
 
-    # -----------------------------------------------------------------------
+    # Courses
     print("\n[Education — Courses]")
     course_name_map = {}
     for c in EDU_COURSES:
-        if exists("Course", {"course_name": c["course_name"]}):
-            log(f"skip  '{c['course_name']}' (exists)")
+        if _exists("Course", {"course_name": c["course_name"]}):
+            _log(f"skip  '{c['course_name']}' (exists)")
             course_name_map[c["course_name"]] = c["course_name"]
             continue
         doc = frappe.get_doc({
-            "doctype": "Course",
+            "doctype":     "Course",
             "course_name": c["course_name"],
             "description": c.get("description", ""),
         })
         doc.insert(ignore_permissions=True)
         course_name_map[c["course_name"]] = doc.name
-        log(f"created course '{doc.name}'")
+        _log(f"created course '{doc.name}'")
 
-    # -----------------------------------------------------------------------
+    # Programs
     print("\n[Education — Programs]")
     program_name_map = {}
     for p in EDU_PROGRAMS:
-        if exists("Program", {"program_name": p["program_name"]}):
-            log(f"skip  '{p['program_name']}' (exists)")
+        if _exists("Program", {"program_name": p["program_name"]}):
+            _log(f"skip  '{p['program_name']}' (exists)")
             program_name_map[p["program_name"]] = p["program_name"]
             continue
-        course_rows = [
-            {"course": course_name_map[cn], "course_name": cn, "required": 1}
-            for cn in p["courses"] if cn in course_name_map
-        ]
         doc = frappe.get_doc({
-            "doctype": "Program",
-            "program_name": p["program_name"],
+            "doctype":              "Program",
+            "program_name":         p["program_name"],
             "program_abbreviation": p.get("program_abbreviation", ""),
-            "courses": course_rows,
+            "courses": [
+                {"course": course_name_map[cn], "course_name": cn, "required": 1}
+                for cn in p["courses"] if cn in course_name_map
+            ],
         })
         doc.insert(ignore_permissions=True)
         program_name_map[p["program_name"]] = doc.name
-        log(f"created program '{doc.name}'")
+        _log(f"created program '{doc.name}'")
 
-    # -----------------------------------------------------------------------
+    # Instructors
     print("\n[Education — Instructors]")
-    instructor_name_map = {}
     for instr in INSTRUCTORS:
-        if exists("Instructor", {"instructor_name": instr["instructor_name"]}):
-            log(f"skip  '{instr['instructor_name']}' (exists)")
-            existing = frappe.db.get_value("Instructor", {"instructor_name": instr["instructor_name"]}, "name")
-            instructor_name_map[instr["instructor_name"]] = existing
+        if _exists("Instructor", {"instructor_name": instr["instructor_name"]}):
+            _log(f"skip  '{instr['instructor_name']}' (exists)")
             continue
-        doc = frappe.get_doc({
-            "doctype": "Instructor",
+        frappe.get_doc({
+            "doctype":         "Instructor",
             "instructor_name": instr["instructor_name"],
-        })
-        doc.insert(ignore_permissions=True)
-        instructor_name_map[instr["instructor_name"]] = doc.name
-        log(f"created instructor '{doc.name}'")
+        }).insert(ignore_permissions=True)
+        _log(f"created instructor '{instr['instructor_name']}'")
 
-    # -----------------------------------------------------------------------
+    # Students
     print("\n[Education — Students]")
     student_name_map = {}
     for s in STUDENTS:
-        if exists("Student", {"student_email_id": s["student_email_id"]}):
-            log(f"skip  '{s['first_name']} {s['last_name']}' (exists)")
-            existing = frappe.db.get_value("Student", {"student_email_id": s["student_email_id"]}, "name")
-            student_name_map[s["student_email_id"]] = existing
+        if _exists("Student", {"student_email_id": s["student_email_id"]}):
+            _log(f"skip  '{s['first_name']} {s['last_name']}' (exists)")
+            student_name_map[s["student_email_id"]] = frappe.db.get_value(
+                "Student", {"student_email_id": s["student_email_id"]}, "name"
+            )
             continue
         doc = frappe.get_doc({
-            "doctype": "Student",
-            "first_name": s["first_name"],
-            "last_name": s["last_name"],
+            "doctype":          "Student",
+            "first_name":       s["first_name"],
+            "last_name":        s["last_name"],
             "student_email_id": s["student_email_id"],
-            "joining_date": today(),
-            "enabled": 1,
+            "joining_date":     today(),
+            "enabled":          1,
         })
         doc.insert(ignore_permissions=True)
         student_name_map[s["student_email_id"]] = doc.name
-        log(f"created student '{doc.name}' ({s['student_email_id']})")
+        _log(f"created student '{doc.name}' ({s['student_email_id']})")
 
-    # -----------------------------------------------------------------------
+    # Student Groups
     print("\n[Education — Student Groups]")
-    for prog_data in EDU_PROGRAMS:
-        prog_name = program_name_map.get(prog_data["program_name"])
-        if not prog_name:
+    for p in EDU_PROGRAMS:
+        prog_name  = program_name_map.get(p["program_name"])
+        group_name = f"{p['program_abbreviation']} - {ACADEMIC_YEAR_NAME}"
+        if not prog_name or _exists("Student Group", {"student_group_name": group_name}):
+            _log(f"skip  group '{group_name}'")
             continue
-        group_name = f"{prog_data['program_abbreviation']} - {ACADEMIC_YEAR_NAME}"
-        if exists("Student Group", {"student_group_name": group_name}):
-            log(f"skip  group '{group_name}' (exists)")
-            continue
-
-        student_rows = [
-            {"student": sn, "active": 1}
-            for sn in student_name_map.values()
-        ]
-        group_doc = frappe.get_doc({
-            "doctype": "Student Group",
+        frappe.get_doc({
+            "doctype":            "Student Group",
             "student_group_name": group_name,
-            "academic_year": ay_name,
-            "academic_term": term_name_map.get("1st Semester"),
-            "group_based_on": "Batch",
-            "program": prog_name,
-            "students": student_rows,
-        })
-        group_doc.insert(ignore_permissions=True)
-        log(f"created student group '{group_doc.name}'")
+            "academic_year":      ACADEMIC_YEAR_NAME,
+            "academic_term":      term_name_map.get("1st Semester"),
+            "group_based_on":     "Batch",
+            "program":            prog_name,
+            "students": [
+                {"student": sn, "active": 1}
+                for sn in student_name_map.values()
+            ],
+        }).insert(ignore_permissions=True)
+        _log(f"created student group '{group_name}'")
 
     frappe.db.commit()
 
-    # -----------------------------------------------------------------------
+    # Program Enrollments
     print("\n[Education — Program Enrollments]")
     first_term = term_name_map.get("1st Semester")
-
     for i, s in enumerate(STUDENTS):
-        student_doc_name = student_name_map.get(s["student_email_id"])
-        if not student_doc_name:
+        student_name = student_name_map.get(s["student_email_id"])
+        if not student_name:
             continue
-
-        # Alternate students between the two programs
-        prog_key = EDU_PROGRAMS[i % len(EDU_PROGRAMS)]["program_name"]
-        prog_name = program_name_map.get(prog_key)
+        p         = EDU_PROGRAMS[i % len(EDU_PROGRAMS)]
+        prog_name = program_name_map.get(p["program_name"])
         if not prog_name:
             continue
-
-        if exists("Program Enrollment", {"student": student_doc_name, "program": prog_name, "academic_year": ay_name}):
-            log(f"skip  enrollment {student_doc_name} → {prog_name} (exists)")
+        if _exists("Program Enrollment", {
+            "student":       student_name,
+            "program":       prog_name,
+            "academic_year": ACADEMIC_YEAR_NAME,
+        }):
+            _log(f"skip  enrollment {student_name} → {prog_name} (exists)")
             continue
 
-        # Build course rows for this program
-        prog_courses = EDU_PROGRAMS[i % len(EDU_PROGRAMS)]["courses"]
-        course_rows = [
-            {"course": course_name_map[cn], "course_name": cn}
-            for cn in prog_courses if cn in course_name_map
-        ]
-
-        enr_doc = frappe.get_doc({
-            "doctype": "Program Enrollment",
-            "student": student_doc_name,
-            "program": prog_name,
-            "academic_year": ay_name,
-            "academic_term": first_term,
+        enr = frappe.get_doc({
+            "doctype":        "Program Enrollment",
+            "student":        student_name,
+            "program":        prog_name,
+            "academic_year":  ACADEMIC_YEAR_NAME,
+            "academic_term":  first_term,
             "enrollment_date": today(),
-            "courses": course_rows,
+            "courses": [
+                {"course": course_name_map[cn], "course_name": cn}
+                for cn in p["courses"] if cn in course_name_map
+            ],
         })
-        enr_doc.insert(ignore_permissions=True)
-        # Submit the enrollment
-        enr_doc.submit()
-        log(f"enrolled {student_doc_name} → {prog_name} (submitted)")
+        enr.insert(ignore_permissions=True)
+        enr.submit()
+        _log(f"enrolled  {student_name} → {prog_name} (submitted)")
 
     frappe.db.commit()
     print("  Education seeding complete.")
 
 
-# ---------------------------------------------------------------------------
-# Deletion helpers
-# ---------------------------------------------------------------------------
-
-def _delete_doc(doctype, name):
-    try:
-        doc = frappe.get_doc(doctype, name)
-        # Cancel submitted docs before deleting
-        if getattr(doc, "docstatus", 0) == 1:
-            doc.cancel()
-        frappe.delete_doc(doctype, name, ignore_permissions=True, force=True)
-        log(f"deleted {doctype} '{name}'")
-    except Exception as e:
-        log(f"warn  could not delete {doctype} '{name}': {e}")
-
-
-def delete_lms():
-    print("\n[Delete — LMS Enrollments]")
-    student_emails = [u["email"] for u in USERS if "Student" in u.get("roles", [])]
-    for email in student_emails:
-        for enr in frappe.get_all("LMS Enrollment", filters={"member": email}, pluck="name"):
-            _delete_doc("LMS Enrollment", enr)
-        for enr in frappe.get_all("LMS Batch Enrollment", filters={"member": email}, pluck="name"):
-            _delete_doc("LMS Batch Enrollment", enr)
-
-    print("\n[Delete — LMS Batches]")
-    for batch_data in LMS_BATCHES:
-        name = frappe.db.get_value("LMS Batch", {"title": batch_data["title"]}, "name")
-        if name:
-            _delete_doc("LMS Batch", name)
-
-    print("\n[Delete — LMS Courses (chapters, lessons, quizzes)]")
-    for course_data in LMS_COURSES:
-        course_name = frappe.db.get_value("LMS Course", {"title": course_data["title"]}, "name")
-        if not course_name:
-            log(f"skip  '{course_data['title']}' (not found)")
-            continue
-
-        # Delete quiz + questions
-        quiz_data = course_data.get("quiz")
-        if quiz_data:
-            quiz_name = frappe.db.get_value("LMS Quiz", {"title": quiz_data["title"]}, "name")
-            if quiz_name:
-                quiz_doc = frappe.get_doc("LMS Quiz", quiz_name)
-                for row in quiz_doc.questions:
-                    _delete_doc("LMS Question", row.question)
-                _delete_doc("LMS Quiz", quiz_name)
-
-        # Delete lessons then chapters
-        for chapter_ref in frappe.get_all("Course Chapter", filters={"course": course_name}, pluck="name"):
-            chapter_doc = frappe.get_doc("Course Chapter", chapter_ref)
-            for lesson_ref in chapter_doc.lessons:
-                _delete_doc("Course Lesson", lesson_ref.lesson)
-            _delete_doc("Course Chapter", chapter_ref)
-
-        _delete_doc("LMS Course", course_name)
-
-    frappe.db.commit()
-    print("  LMS deletion complete.")
-
-
 def delete_education():
     print("\n[Delete — Program Enrollments]")
     for s in STUDENTS:
-        for enr in frappe.get_all(
-            "Program Enrollment",
-            filters={"student": ["like", f"%{s['first_name']}%"]},
-            pluck="name",
-        ):
-            _delete_doc("Program Enrollment", enr)
+        student_name = frappe.db.get_value(
+            "Student", {"student_email_id": s["student_email_id"]}, "name"
+        )
+        if not student_name:
+            continue
+        for name in frappe.get_all("Program Enrollment", filters={"student": student_name}, pluck="name"):
+            _delete_doc("Program Enrollment", name)
 
     print("\n[Delete — Student Groups]")
-    for prog_data in EDU_PROGRAMS:
-        group_name = f"{prog_data['program_abbreviation']} - {ACADEMIC_YEAR_NAME}"
+    for p in EDU_PROGRAMS:
+        group_name = f"{p['program_abbreviation']} - {ACADEMIC_YEAR_NAME}"
         if frappe.db.exists("Student Group", group_name):
             _delete_doc("Student Group", group_name)
 
@@ -991,14 +907,12 @@ def delete_education():
 
     print("\n[Delete — Academic Terms & Year]")
     for t in ACADEMIC_TERMS:
-        name = frappe.db.get_value(
-            "Academic Term",
-            {"academic_year": ACADEMIC_YEAR_NAME, "term_name": t["term_name"]},
-            "name",
-        )
+        name = frappe.db.get_value("Academic Term", {
+            "academic_year": ACADEMIC_YEAR_NAME,
+            "term_name":     t["term_name"],
+        }, "name")
         if name:
             _delete_doc("Academic Term", name)
-
     if frappe.db.exists("Academic Year", ACADEMIC_YEAR_NAME):
         _delete_doc("Academic Year", ACADEMIC_YEAR_NAME)
 
@@ -1006,30 +920,8 @@ def delete_education():
     print("  Education deletion complete.")
 
 
-def delete_users():
-    print("\n[Delete — Users]")
-    for u in USERS:
-        if frappe.db.exists("User", u["email"]):
-            _delete_doc("User", u["email"])
-    frappe.db.commit()
-    print("  Users deletion complete.")
-
-
-def delete_all():
-    print("=" * 60)
-    print("  Frappe Bench — Deleting Seed Data")
-    print("=" * 60)
-    delete_lms()
-    delete_education()
-    delete_users()
-    frappe.db.commit()
-    print("\n" + "=" * 60)
-    print("  Deletion complete!")
-    print("=" * 60)
-
-
 # ---------------------------------------------------------------------------
-# Entry point
+# Entry points
 # ---------------------------------------------------------------------------
 
 def seed_all():
@@ -1042,4 +934,17 @@ def seed_all():
     frappe.db.commit()
     print("\n" + "=" * 60)
     print("  Seeding complete!")
+    print("=" * 60)
+
+
+def delete_all():
+    print("=" * 60)
+    print("  Frappe Bench — Deleting Seed Data")
+    print("=" * 60)
+    delete_lms()
+    delete_education()
+    delete_users()
+    frappe.db.commit()
+    print("\n" + "=" * 60)
+    print("  Deletion complete!")
     print("=" * 60)
