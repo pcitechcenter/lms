@@ -522,6 +522,9 @@ def seed_lms():
             chapter_doc.insert(ignore_permissions=True)
             chapter_doc_name = chapter_doc.name
 
+            # Reload to avoid TimestampMismatchError from background hooks
+            chapter_doc = frappe.get_doc("Course Chapter", chapter_doc_name)
+
             # Create lessons and attach to chapter
             for lesson_data in chapter_info.get("lessons", []):
                 lesson_doc = frappe.get_doc({
@@ -537,7 +540,8 @@ def seed_lms():
             chapter_doc.save(ignore_permissions=True)
             chapter_doc_names.append(chapter_doc_name)
 
-        # Attach chapters to course
+        # Reload course to avoid TimestampMismatchError from background hooks
+        course_doc = frappe.get_doc("LMS Course", course_name)
         for ch_name in chapter_doc_names:
             course_doc.append("chapters", {"chapter": ch_name})
         course_doc.save(ignore_permissions=True)
